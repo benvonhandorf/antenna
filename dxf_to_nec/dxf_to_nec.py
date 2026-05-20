@@ -69,7 +69,7 @@ def process_dxf(filename, output_file=None, segments=31, diameter=0.002, offset=
 
     if offset != (0, 0, 0):
         # Use a GM card to translate the existing geometry
-        output(f'GM   0    0  0.00000E+00  0.00000E+00  0.00000E+00 {coordinate_float(offset[0])} {coordinate_float(offset[1])} {coordinate_float(offset[2])}          0', output_file)
+        output(f'GM   0    0  0.00000E+00  0.00000E+00  0.00000E+00 {coordinate_float(offset[0])} {coordinate_float(offset[1])} {coordinate_float(offset[2])}          1', output_file)
 
 
     output_ge(output_file)
