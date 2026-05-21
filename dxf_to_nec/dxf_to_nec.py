@@ -64,7 +64,7 @@ EN     0     0     0      0  0.00000E+00  0.00000E+00  0.00000E+00  0.00000E+00 
 
 
 
-def process_dxf(filename, scale, output_filename, frequency, segments_per_meter, diameter, offset, mirror_y):
+def process_dxf(filename, scale, output_filename, frequency, segments_per_meter, diameter, offset, axis, mirror_y):
 
     doc = ezdxf.readfile(filename)
 
@@ -87,16 +87,36 @@ def process_dxf(filename, scale, output_filename, frequency, segments_per_meter,
         start = line.dxf.start * scale
         end = line.dxf.end * scale
 
-        output_geometry(idx, segments_per_meter, start, end, diameter, output_file)
-        idx += 1
-
-        # Mirror cards around the Y axis
-        if mirror_y:
-            mirrored_start = (end[0], -end[1], end[2])
-            mirrored_end = (start[0], -start[1], start[2])
-
-            output_geometry(idx, segments_per_meter, mirrored_start, mirrored_end, diameter, output_file)
+        if axis == 'XY':
+            output_geometry(idx, segments_per_meter, start, end, diameter, output_file)
             idx += 1
+
+            # Mirror cards around the Y axis
+            if mirror_y:
+                mirrored_start = (end[0], -end[1], end[2])
+                mirrored_end = (start[0], -start[1], start[2])
+
+                output_geometry(idx, segments_per_meter, mirrored_start, mirrored_end, diameter, output_file)
+                idx += 1
+        elif axis == "XZ":
+            #Transpose the plane into XZ
+            start =(start[0], start[2], start[1])
+            end =(end[0], end[2], end[1])
+
+            #TODO: Better name for this
+            if mirror_y:
+                #TODO: Parameters
+                repeat_steps = 20
+                rads_per_step = (2 * math.pi) / repeat_steps
+
+                for step in range(0, repeat_steps):
+                    rotation_rads = rads_per_step * step
+                    element_start = (start[0] * math.cos(rotation_rads), start[0] * math.sin(rotation_rads), start[2])
+                    element_end = (end[0] * math.cos(rotation_rads), end[0] * math.sin(rotation_rads), end[2])
+
+                    output_geometry(idx, segments_per_meter, element_start, element_end, diameter, output_file)
+                    idx += 1
+
 
     if offset != (0, 0, 0):
         # Use a GM card to translate the existing geometry
@@ -135,13 +155,10 @@ def main():
     parser.add_argument('-S', '--scale', type=float, default=0.001, help='Scale factor for the DXF to meters (default: 0.001)')
     parser.add_argument('-O', '--offset', type=parse_xyz, default=(0, 0, 5),
                         help='Geometry offset as comma-separated XYZ in meters (default: 0,0,5)')
+    parser.add_argument('-a', '--axis', type=str, default='XY', help='Modeled Axis XY or XZ (default: XY)')
     parser.add_argument('--no-mirror', action='store_true', help='Disable Y-axis mirroring')
 
     args = parser.parse_args()
-
-    output_file = None
-    if args.output:
-        output_file = open(args.output, 'w')
 
     expanded_files = []
     for filename in args.filenames:
@@ -189,6 +206,7 @@ def main():
             segments_per_meter=segments_per_meter,
             diameter=args.diameter,
             offset=args.offset,
+            axis=args.axis,
             mirror_y=not args.no_mirror
         )
 
